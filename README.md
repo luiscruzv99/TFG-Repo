@@ -18,22 +18,22 @@ Para poder ejecutar los benchmarks, es necesario tener instalado el siguiente so
 
 -  __Python3__ y __Pip__: para instalar ambos en Ubuntu, hacer:
 
-  ``` bash
-  sudo apt update
-  sudo apt install python3 python3-pip
-  ```
+``` bash
+sudo apt update
+sudo apt install python3 python3-pip
+```
 
 - Librerías de __CUDA__ necesarias para la ejecución de ambos frameworks en GPU: en este caso __CUDA-toolkit__ y __libcudnn7__ además de los drivers de nvidia (versión 450):
 
-  ```bash
-  # TODO
-  ```
+```bash
+# TODO
+```
 
 - Frameworks de __Pythorch__ y __Tensorflow__: deben ser instalados a través de un gestor de librerías de Python, en este caso, a través de `pip`, aunque en el caso de __Pytorch__, éste puede ser instalado a través de otros gestores de paquetes:
 
-  ```bash
-  pip3 install tensorflow
-  pip3 install torch torchvision torchaudio
-  ```
+```bash
+pip3 install tensorflow
+pip3 install torch torchvision torchaudio
+```
 
   
