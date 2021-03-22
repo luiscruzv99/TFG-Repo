@@ -54,8 +54,13 @@ def convert_data(data, labels, rank):
     Funcion que convierte de los arrays en tensores de pytorch, mandandolos a
     la GPU, definicion de datasets y dataloaders
     '''
-    train_size = 192  # Tamanho del dataset de entrenamiento
-    # val_size = 25  # Tamanho del dataset de validacion
+
+    # Tamanho del dataset de entrenamiento del dispositivo, la cantidad de
+    # datos que ve el modelo es train_size*world_size (#. de dispositivos).
+    train_size = 3500
+
+    # Tamanho del dataset de validacion, este es independiente del dispositivo.
+    # val_size = 25
 
     # Definicion de los tensores y dataloaders de la fase de entrenamiento
     train_data = torch.Tensor(data[train_size * rank:train_size *
@@ -64,11 +69,11 @@ def convert_data(data, labels, rank):
                                        (rank+1)])
 
     train_set = TensorDataset(train_data, train_labels)
-    train_loader = DataLoader(train_set, batch_size=4, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=24, shuffle=True)
 
     # Definicion de los tensores y dataloaders de la fase de validacion
-    val_data = torch.Tensor(data[30000:30050])
-    val_labels = torch.Tensor(labels[30000:30050])
+    val_data = torch.Tensor(data[30000:30500])
+    val_labels = torch.Tensor(labels[30000:30500])
 
     val_set = TensorDataset(val_data, val_labels)
     val_loader = DataLoader(val_set, shuffle=True)
@@ -86,10 +91,12 @@ def loop(rank, world_size):
     # Indicacion de que dispositivo esta realizando el trabajo
     print(f"Usando dispositivo {rank}: " + str(devices[rank]))
 
+    # CARGADO DE LOS DATOS DESDE LOS ARCHIVOS
     st = tm.time()
     data, labels = load_data()
     print("Cargado de los datos: "+str(tm.time()-st))
 
+    # CONVERSION DE LOS DATOS AL FORMATO DE PYTORCH (TENSORES/DATALOADERS)
     st = tm.time()
     train_loader, val_loader = convert_data(data=data, labels=labels,
                                             rank=rank)
@@ -120,7 +127,7 @@ def loop(rank, world_size):
     # Barrera para sincronizar los procesos antes del inicio del entrenamiento
     # dist.barrier()
 
-    # Fase de entrenamiento
+    # ENTRENAMIENTO DE LA RED
     st = tm.time()
     tn.train(devices[rank], train_loader, net, optimizador)
     print(f"{rank}: Tiempo de entrenamiento: "+str(tm.time()-st))
@@ -128,7 +135,7 @@ def loop(rank, world_size):
     # Barrera para sincronizar los procesos antes del inicio de la validacion
     # dist.barrier()
 
-    # Fase de validacion
+    # VALIDACION DE LA RED
     st = tm.time()
     acc, loss = tn.validate_or_test(devices[rank], val_loader,
                                     net, optimizador)
