@@ -59,17 +59,16 @@ def convert_data(data, labels, rank):
 
     # Definicion de los tensores y dataloaders de la fase de entrenamiento
     train_data = torch.Tensor(data[train_size * rank:train_size *
-                                   (rank+1)]).to(devices[rank])
-
+                                   (rank+1)])
     train_labels = torch.Tensor(labels[train_size * rank:train_size *
-                                       (rank+1)]).to(devices[rank])
+                                       (rank+1)])
 
     train_set = TensorDataset(train_data, train_labels)
-    train_loader = DataLoader(train_set, batch_size=16, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=4, shuffle=True)
 
     # Definicion de los tensores y dataloaders de la fase de validacion
-    val_data = torch.Tensor(data[30000:30050]).to(devices[rank])
-    val_labels = torch.Tensor(labels[30000:30050]).to(devices[rank])
+    val_data = torch.Tensor(data[30000:30050])
+    val_labels = torch.Tensor(labels[30000:30050])
 
     val_set = TensorDataset(val_data, val_labels)
     val_loader = DataLoader(val_set, shuffle=True)
@@ -123,7 +122,7 @@ def loop(rank, world_size):
 
     # Fase de entrenamiento
     st = tm.time()
-    tn.train(train_loader, net, optimizador)
+    tn.train(devices[rank], train_loader, net, optimizador)
     print(f"{rank}: Tiempo de entrenamiento: "+str(tm.time()-st))
 
     # Barrera para sincronizar los procesos antes del inicio de la validacion
@@ -131,7 +130,9 @@ def loop(rank, world_size):
 
     # Fase de validacion
     st = tm.time()
-    acc, loss = tn.validate_or_test(val_loader, net, optimizador)
+    acc, loss = tn.validate_or_test(devices[rank], val_loader,
+                                    net, optimizador)
+
     print(f"{rank}: Tiempo de validacion: "+str(tm.time()-st))
 
     # Eliminacion del grupo de procesos, operacion paralela terminada

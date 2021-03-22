@@ -132,3 +132,5 @@ dmypy.json
 *.jpg
 *.txt
 *.pkl
+
+Pytorch/Bacth_size_bench/

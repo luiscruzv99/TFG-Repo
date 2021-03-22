@@ -10,13 +10,13 @@ import Modelo.model  # Implementacion de ResNet34 definida en el archivo model.p
 Funcion que entrena una red neuronal, sobre un dataset, con un optimizador y funcion de perdida
 pasados como parametros. Se encarga de hacer la propagacion hacia adelante y hacia atras
 '''
-def train(dataset, net, optimizer, loss_fn=nn.MSELoss(reduction='mean')):
+def train(device, dataset, net, optimizer, loss_fn=nn.MSELoss(reduction='mean')):
 
     # Recorremos todos los ejemplos con sus etiquetas y entrenamos la red con ellos
     for example, label in dataset:
         optimizer.zero_grad()
-        output = net.forward(example)
-        loss = loss_fn(output, label)
+        output = net.forward(example.to(device))
+        loss = loss_fn(output, label.to(device))
         loss.backward()
         optimizer.step()
 
@@ -26,7 +26,7 @@ Funcion que valida o testea la red neuronal pasada como parametro (tambien se de
 y el optimizador como parametros) sobre un dataset pasado com parametro.
 Esta funcion calcula además la precision y la pérdida memdia de la red.
 '''
-def validate_or_test(dataset, net, optimizer, loss_fn=nn.MSELoss(reduction='mean')):
+def validate_or_test(device, dataset, net, optimizer, loss_fn=nn.MSELoss(reduction='mean')):
     
     # Ponemos la red en modo evaluacion
     net.eval()
@@ -37,8 +37,8 @@ def validate_or_test(dataset, net, optimizer, loss_fn=nn.MSELoss(reduction='mean
     # Recorremos todos los ejemplos con sus etiquetas
     for example, label in dataset:
         optimizer.zero_grad()
-        output = net.forward(example)
-        loss = loss_fn(output, label)
+        output = net.forward(example.to(device))
+        loss = loss_fn(output, label.to(device))
 
         guess = torch.max(output, -1)[1]
         true_val = torch.max(label, -1)[1]
