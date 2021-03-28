@@ -17,7 +17,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 # (anhadimos el cpu manualmente)
 devices = ['cpu']
 for i in range(0, torch.cuda.device_count()):
-    devices.append('cuda:'+str(i))
+   devices.append('cuda:'+str(i))
 
 
 def setup(rank, world_size):
@@ -58,6 +58,9 @@ def convert_data(data, labels, rank):
     # Tamanho del dataset de entrenamiento del dispositivo, la cantidad de
     # datos que ve el modelo es train_size*world_size (#. de dispositivos).
     train_size = 3500
+    
+    if(devices[rank] == 'cpu'):
+        train_size = int(train_size / 4)
 
     # Tamanho del dataset de validacion, este es independiente del dispositivo.
     # val_size = 25
@@ -69,7 +72,10 @@ def convert_data(data, labels, rank):
                                        (rank+1)])
 
     train_set = TensorDataset(train_data, train_labels)
-    train_loader = DataLoader(train_set, batch_size=24, shuffle=True)
+    if(devices[rank] == 'cpu'):
+        train_loader = DataLoader(train_set, batch_size=6, shuffle=True)
+    else:
+        train_loader = DataLoader(train_set, batch_size=24, shuffle=True)
 
     # Definicion de los tensores y dataloaders de la fase de validacion
     val_data = torch.Tensor(data[30000:30500])
@@ -128,9 +134,11 @@ def loop(rank, world_size):
     # dist.barrier()
 
     # ENTRENAMIENTO DE LA RED
-    st = tm.time()
-    tn.train(devices[rank], train_loader, net, optimizador)
-    print(f"{rank}: Tiempo de entrenamiento: "+str(tm.time()-st))
+    
+    with net.join():
+        st = tm.time()
+        tn.train(devices[rank], train_loader, net, optimizador)
+        print(f"{rank}: Tiempo de entrenamiento: "+str(tm.time()-st))
 
     # Barrera para sincronizar los procesos antes del inicio de la validacion
     # dist.barrier()
