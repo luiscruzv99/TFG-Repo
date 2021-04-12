@@ -1,9 +1,12 @@
 import os
+import sys
+from datetime import datetime
 
 import Modelo.model as md
 import Modelo.training as tn
 
 import pickle as pk
+import numpy as np
 import time as tm
 
 import torch
@@ -49,22 +52,22 @@ def load_data():
     return [data, labels]
 
 
-def convert_data(data, labels, rank):
+def convert_data(data, labels, rank, train_size, val_size ,batch_size, cpu_factor):
     '''
-    Funcion que convierte de los arrays en tensores de pytorch, mandandolos a
-    la GPU, definicion de datasets y dataloaders
+    Funcion que convierte de los arrays en datasets y dataloaders
+    de Pytorch, el tamaño de estos depende del dispositivo que se
+    este usando, y la cantidad de datos que se quieran mandar a 
+    la red
     '''
 
+       
     # Tamanho del dataset de entrenamiento del dispositivo, la cantidad de
     # datos que ve el modelo es train_size*world_size (#. de dispositivos).
-    train_size = 3500
     
     if(devices[rank] == 'cpu'):
-        train_size = int(train_size / 4)
+        train_size = int(train_size / cpu_factor)
 
-    # Tamanho del dataset de validacion, este es independiente del dispositivo.
-    # val_size = 25
-
+       
     # Definicion de los tensores y dataloaders de la fase de entrenamiento
     train_data = torch.Tensor(data[train_size * rank:train_size *
                                    (rank+1)])
@@ -72,14 +75,15 @@ def convert_data(data, labels, rank):
                                        (rank+1)])
 
     train_set = TensorDataset(train_data, train_labels)
+
     if(devices[rank] == 'cpu'):
-        train_loader = DataLoader(train_set, batch_size=6, shuffle=True)
+        train_loader = DataLoader(train_set, batch_size=int(batch_size/cpu_factor), shuffle=True)
     else:
-        train_loader = DataLoader(train_set, batch_size=24, shuffle=True)
+        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
 
     # Definicion de los tensores y dataloaders de la fase de validacion
-    val_data = torch.Tensor(data[30000:30500])
-    val_labels = torch.Tensor(labels[30000:30500])
+    val_data = torch.Tensor(data[train_size: train_size+val_size])
+    val_labels = torch.Tensor(labels[train_size:train_size+val_size])
 
     val_set = TensorDataset(val_data, val_labels)
     val_loader = DataLoader(val_set, shuffle=True)
@@ -87,27 +91,22 @@ def convert_data(data, labels, rank):
     return [train_loader, val_loader]
 
 
-def loop(rank, world_size):
+def loop(rank, world_size, train_size, val_size, batch_size, cpu_factor):
     '''
     Funcion que ejecuta en paralelo los bucles de entrenamiento y validacion de
     la red neuronal, para ello recibe como parametros el rango del proceso
     actual y el numero de procesos totales realizando la tarea
     '''
 
-    # Indicacion de que dispositivo esta realizando el trabajo
-    print(f"Usando dispositivo {rank}: " + str(devices[rank]))
 
     # CARGADO DE LOS DATOS DESDE LOS ARCHIVOS
-    st = tm.time()
     data, labels = load_data()
-    print("Cargado de los datos: "+str(tm.time()-st))
-
+    
     # CONVERSION DE LOS DATOS AL FORMATO DE PYTORCH (TENSORES/DATALOADERS)
-    st = tm.time()
     train_loader, val_loader = convert_data(data=data, labels=labels,
-                                            rank=rank)
-
-    print(f"{rank}: Creacion de datasets: "+str(tm.time()-st))
+                                            rank=rank, train_size=train_size,
+                                            val_size=val_size, batch_size=batch_size,
+                                            cpu_factor=cpu_factor)
 
     # Definicion de la red neuronal, optimizador y perdida
 
@@ -130,41 +129,37 @@ def loop(rank, world_size):
     # Optimizador de la red (Stochastic Gradient Deescent)
     optimizador = torch.optim.SGD(net.parameters(), lr=0.128)
 
-    # Barrera para sincronizar los procesos antes del inicio del entrenamiento
-    # dist.barrier()
-
     # ENTRENAMIENTO DE LA RED
-    
+    t_entren = 0
     with net.join():
         st = tm.time()
         tn.train(devices[rank], train_loader, net, optimizador)
-        print(f"{rank}: Tiempo de entrenamiento: "+str(tm.time()-st))
-
-    # Barrera para sincronizar los procesos antes del inicio de la validacion
-    # dist.barrier()
+        t_entren = tm.time()-st
 
     # VALIDACION DE LA RED
+    t_val = 0
     st = tm.time()
     acc, loss = tn.validate_or_test(devices[rank], val_loader,
                                     net, optimizador)
 
-    print(f"{rank}: Tiempo de validacion: "+str(tm.time()-st))
+    t_val = tm.time()-st
 
     # Eliminacion del grupo de procesos, operacion paralela terminada
     cleanup()
 
-    print("Precision: "+str(acc))
-    print("Perdida: "+str(loss))
+    if(devices[rank] == 'cuda:0'):
+        with open('.'+devices[rank], 'wb') as f:
+            pk.dump([t_entren, t_val, acc, loss], f)
 
 
-def run_loop(loop_fn, world_size):
+def run_loop(loop_fn, world_size,train_size, val_size, batch_size, cpu_factor):
     '''
     Funcion que ejecuta una funcion, pasada como parametro, en paralelo. Para
     ello spawnea tantos procesos como los especificados en el parametro
     'world_size'.
     '''
     mp.spawn(loop_fn,
-             args=(world_size, ),
+            args=(world_size, train_size, val_size, batch_size, cpu_factor, ),
              nprocs=world_size,
              join=True)
 
@@ -176,4 +171,29 @@ valida la red (loop), con un tamanho de mundo (numero de procesos) igual al
 numero de dispositivos disponibles en la maquina (incluyendo el procesador).
 '''
 if __name__ == '__main__':
-    run_loop(loop, len(devices))
+
+    train_size = 50
+    val_size = 10
+    batch_size = 25
+    cpu_factor = 5
+    params = {'Tam. entrenamiento': train_size, 'Tam. validacion': val_size,
+            'Tam. batch': batch_size, 'Factor reduccion CPU': cpu_factor}
+    results = []
+    try:
+      train_size = sys.argv[1]
+      val_size = sys.argv[2]
+      batch_size = sys.argv[3]
+      cpu_factor = sys.argv[4]
+    except:
+        print("No se han introducido todos los parametros esperados," +
+            " usando valores por defecto")
+    for i in range(0,3):
+        print('====RUN '+str(i)+'====')
+        run_loop(loop, len(devices), int(train_size), int(val_size), int(batch_size), int(cpu_factor))
+        with open('.cuda:0', 'rb') as f:
+            results.append(pk.load(f))
+    
+    os.remove('.cuda:0')
+    ordered_results = np.transpose(np.array(results))
+    with open(datetime.now().strftime('%Y %m %d, %H:%M:%S'), 'wb') as f:
+        pk.dump([params, ordered_results], f)
