@@ -177,31 +177,23 @@ def run_loop(loop_fn, world_size, train_size, val_size, batch_size,
              join=True)
 
 
-'''
-Funcion principal de la script. Recibe como parametros (de la linea de
-comandos) el tamanho de entrenamiento y validacion de los conjuntos de datos,
-tamanho de los batches del conjunto de entrenamiento y la proporcion en la que
-reducir el tamanho de los datos de entrenamiento para la CPU (equilibrado
-de carga).
-Estos parametros deben introducirse en el orden especificado anteriormente, en
-caso de faltar alguno, se utilizaran valores por defecto para los parametros no
-intorducidos
-'''
 if __name__ == '__main__':
+    '''
+    Funcion principal de la script. Recibe como parametros (de la linea de
+    comandos) el tamanho de entrenamiento y validacion de los conjuntos de
+    datos,tamanho de los batches del conjunto de entrenamiento y la proporcion
+    en la que reducir el tamanho de los datos de entrenamiento para la CPU
+    (equilibrado de carga).
+    Estos parametros deben introducirse en el orden especificado anteriormente,
+    en caso de faltar alguno, se utilizaran valores por defecto para los
+    parametros no intorducidos.
+    '''
 
     # Parametros por defecto
     train_size = 3500
     val_size = 500
     batch_size = 24
     cpu_factor = 8
-
-    # Diccionario con los parametros con los que se ha ejecutado el benchamrk
-    params = {'Tam. entrenamiento': train_size, 'Tam. validacion': val_size,
-              'Tam. batch': batch_size, 'Factor reduccion CPU': cpu_factor,
-              'Dispositivos': devices}
-
-    # Lista con los resultados obtenidos
-    results = []
 
     # Lectura de los parametros desde la linea de comandos
     try:
@@ -213,11 +205,19 @@ if __name__ == '__main__':
         print("No se han introducido todos los parametros esperados," +
               " usando valores por defecto")
 
+    # Diccionario con los parametros con los que se ha ejecutado el benchamrk
+    params = {'Tam. entrenamiento': train_size, 'Tam. validacion': val_size,
+              'Tam. batch': batch_size, 'Factor reduccion CPU': cpu_factor,
+              'Dispositivos': devices}
+
+    # Lista con los resultados obtenidos
+    results = []
+
     # Bucle del benchmark, que ejecuta el entrenamiento y validacion de la red
     # neuronal, distribuyendolo entre los dispositivos disponibles (CPU y GPUs)
     # cogiendo los resultados que devuelve el dispositivo 'cuda:0' (los resul-
     # tados son iguales para todos los dispositivos)
-    for i in range(0, 3):
+    for i in range(0, 10):
         print('====RUN '+str(i)+'====')
 
         run_loop(loop, len(devices), int(train_size), int(
@@ -235,5 +235,5 @@ if __name__ == '__main__':
 
     # Guardado de los resultados en un archivo, con la fecha y hora en la que
     # se termino el benchamrk
-    with open(datetime.now().strftime('%Y %m %d, %H:%M:%S')+'.bnc', 'wb') as f:
+    with open(datetime.now().strftime('%Y-%m-%d,%H:%M:%S')+'.bbr', 'wb') as f:
         pk.dump([params, ordered_results], f)
