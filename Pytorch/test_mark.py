@@ -8,6 +8,7 @@ import Modelo.training as tn
 import pickle as pk
 import numpy as np
 import time as tm
+import json
 
 import torch
 import torch.multiprocessing as mp
@@ -235,5 +236,17 @@ if __name__ == '__main__':
 
     # Guardado de los resultados en un archivo, con la fecha y hora en la que
     # se termino el benchamrk
-    with open(datetime.now().strftime('%Y-%m-%d,%H:%M:%S')+'.bbr', 'wb') as f:
+    with open('Results ' + datetime.now().strftime('%Y-%m-%d,%H:%M:%S')+'.bbr',
+              'wb') as f:
         pk.dump([params, ordered_results], f)
+
+    # Guardadado de los parametros de la ejecucion en un archivo json, por
+    # legibilidad
+    with open('Results ' + datetime.now().strftime('%Y-%m-%d,%H:%M:%S') +
+              '.json', 'w') as f:
+        json.dump(params, f)
+
+    # Guardado de los resultados de la ejecucion en un archivo .csv, por
+    # legibilidad
+    np.savetxt('Results ' + datetime.now().strftime('%Y-%m-%d,%H:%M:%S') +
+               '.csv', results, delimiter=',')
