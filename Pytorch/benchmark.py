@@ -25,6 +25,12 @@ for i in range(0, torch.cuda.device_count()):
 def inicializa_mundo(rank, world_size):
     """
     Funcion que inicializa el grupo de procesos,
+
+    @type rank: int
+    @param rank: rango del proceso actual
+
+    @type world_size: int
+    @type world_size: numero de procesos en el grupo de procesos
     """
 
     os.environ['MASTER_ADDR'] = 'localhost'
@@ -60,6 +66,21 @@ def crea_tensores(parametros, datos, etiquetas, rango, tam_mundo):
     de Pytorch, el tamaño de estos depende del modo que se
     este usando, y la cantidad de datos que se quieran mandar a
     la red
+
+    @type parametros:
+    @param parametros:
+
+    @type datos:
+    @param datos:
+
+    @type etiquetas:
+    @param etiquetas:
+
+    @type rango:
+    @param rango:
+
+    @type tam_mundo:
+    @param tam_mundo:
     """
 
     tam_entren = int(parametros.get('Tam. entrenamiento') * len(datos))
@@ -101,6 +122,18 @@ def entrenamiento_resnet(rank, world_size, parametros, datos):
     actual y el numero de procesos totales realizando la tarea.
     Los otros parametros recibidos se propagan a la funcion de creacion de los
     dataloaders con los que alimentar a la red neuronal.
+
+    @type rank:
+    @param rank:
+
+    @type world_size:
+    @param world_size:
+
+    @type parametros:
+    @param parametros:
+
+    @type datos:
+    @param datos:
     """
 
     # CONVERSION DE LOS DATOS AL FORMATO DE PYTORCH (TENSORES/DATALOADERS)
@@ -128,21 +161,22 @@ def entrenamiento_resnet(rank, world_size, parametros, datos):
     # Optimizador de la red (Stochastic Gradient Deescent)
     optimizador = torch.optim.SGD(modelo_paralelo.parameters(), lr=0.128)
 
-    # ENTRENAMIENTO DE LA RED
-
-    # TODO: Implementar epochs y guardado de la precision para cada epoch
-    # TODO: Implementar test al completar el entrenamiento
-
-    # Esto evita que el entrenamiento se cuelgue si varios dispositivos ven
-    # diferentes cantidades de datos
+    # TODO: Implementar guardado de la precision para cada epoch
     st = tm.time()
-    tn.train(dispositivos[rank], loader_entren, modelo_paralelo, optimizador)
+    for i in range(0, 24):
+        # Entrenamiento de la red
+        tn.train(dispositivos[rank], loader_entren, modelo_paralelo, optimizador)
+        # Validacion de la red
+        precision, perdida = tn.validate_or_test(dispositivos[rank], loader_val,
+                                         modelo_paralelo, optimizador)
+
     t_entren = tm.time() - st
 
-    # VALIDACION DE LA RED
+
+    # Test de la red
     st = tm.time()
-    precision, perdida = tn.validate_or_test(dispositivos[rank], loader_val,
-                                             modelo_paralelo, optimizador)
+    precision, perdida = tn.validate_or_test(dispositivos[rank], loader_test,
+                                                modelo_paralelo, optimizador)
     t_val = tm.time() - st
 
     # Eliminacion del grupo de procesos, operacion paralela terminada
@@ -162,6 +196,18 @@ def paraleliza_funcion(funcion, num_dispositivos, parametros, datos):
     ello spawnea tantos procesos como los especificados en el parametro
     'world_size'.
     El resto de parametros se le pasan a la funcion paralelizada.
+
+    @type funcion:
+    @param funcion:
+
+    @type num_dispositivos:
+    @param num_dispositivos:
+
+    @type parametros:
+    @param parametros:
+
+    @type datos:
+    @param datos:
     """
     mp.spawn(funcion,
              args=(num_dispositivos, parametros, datos),
