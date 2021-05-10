@@ -178,7 +178,7 @@ def entrenamiento_resnet(rank, world_size, parametros, datos):
     t_entrenamiento_epochs = []
     t_validacion_epochs = []
     st = tm.time()
-    for a in tqdm(range(1)):
+    for _ in tqdm(range(100)):
         ste = tm.time()
         tn.train(dispositivos[rank], loader_entren, modelo_paralelo, optimizador, perdida_fn)
         t_entrenamiento_epochs.append(tm.time()-ste)
@@ -287,7 +287,7 @@ if __name__ == '__main__':
     # neuronal, distribuyendolo entre los dispositivos disponibles (GPUs) y
     # cogiendo los resultados que devuelve el dispositivo 'cuda:0' (los resul-
     # tados son iguales para todos los dispositivos)
-    for i in range(0, 2):
+    for i in range(0, 10):
         print('====RUN ' + str(i) + '====')
         paraleliza_funcion(entrenamiento_resnet, len(dispositivos), params, lista_datos)
 
@@ -299,7 +299,7 @@ if __name__ == '__main__':
     # t. val...) y cada columna es una run
     os.remove('.cuda:0')
 
-    # Guardado de la evolucion de las precisiones a lo largo de los epochs
+    # Guardado de la evolucion de la red a lo largo de los epochs
     validaciones = []
     entrenamientos = []
     precisiones = []
@@ -308,24 +308,24 @@ if __name__ == '__main__':
         entrenamientos.append(run.pop())
         precisiones.append(run.pop())
 
+    # Formateo de los resultados obtenidos, anhadiendo etiquetas para su
+    # posterior guardado en un archivo csv
     resultados = np.transpose(np.array(resultados))
-
     resultados_dict = {'Tiempo Entrenamiento (s)': resultados[0], 'Tiempo Evaluacion (s)': resultados[1],
                        'Precision (%)': resultados[2], 'Error (%)': resultados[3]}
-
-    print(resultados_dict)
-
     resultados = pd.DataFrame.from_dict(resultados_dict)
 
+    # Formateo de la lista de parametros, para facilitar su legibilidad
     params['Tam. muestras'] = lista_datos[0][0][0].shape
     params['Tam. entrenamiento'] = int(params['Tam. entrenamiento'] * len(lista_datos[0]))
     params['Tam. validacion'] = int(params['Tam. validacion'] * len(lista_datos[0]))
     params['Tam. test'] = int(params['Tam. test'] * len(lista_datos[0]))
 
-    fecha_ejecucion = datetime.now().strftime('%Y-%m-%d,%H:%M') 
-    os.mkdir(fecha_ejecucion)
+
     # Guardado de los resultados en un archivo, con la fecha y hora en la que
     # se termino el benchamrk
+    fecha_ejecucion = datetime.now().strftime('%Y-%m-%d,%H:%M')
+    os.mkdir(fecha_ejecucion)
     with open(fecha_ejecucion + '/Resultados.bbr', 'wb') as f:
         pk.dump([params, resultados], f)
 
@@ -334,18 +334,17 @@ if __name__ == '__main__':
         json.dump(params, f)
 
 
-    #TODO: hay que poner headers en estos archivos
     # Guardado de los resultados de tiempo obtenidos en un formato legible por humanos
-    '''numpy.savetxt(fecha_ejecucion + '/Resultados.csv',
-                  resultados, delimiter=',', fmt='%f')'''
     resultados.to_csv(fecha_ejecucion+'/Resultados.csv')
 
     # Guardado de las precisiones de cada epoch de cada run en un formato legible por humanos
     numpy.savetxt(fecha_ejecucion + '/Precisiones.csv',
                   np.array(precisiones), delimiter=',', fmt='%f')
 
+    # Guardado de los tiempos de entrenamiento de cada epoch de cada run en un formato legible por humanos
     numpy.savetxt(fecha_ejecucion + '/Entrenamientos.csv',
                   np.array(entrenamientos), delimiter=',', fmt='%f')
 
+    # Guardado de los tiempos de validacion de cada epoch de cada run en un formato legible por humanos
     numpy.savetxt(datetime.now().strftime('%Y-%m-%d,%H:%M') + '/Validaciones.csv',
                   np.array(validaciones), delimiter=',', fmt='%f')
