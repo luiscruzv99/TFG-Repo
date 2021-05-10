@@ -287,7 +287,7 @@ if __name__ == '__main__':
     # neuronal, distribuyendolo entre los dispositivos disponibles (GPUs) y
     # cogiendo los resultados que devuelve el dispositivo 'cuda:0' (los resul-
     # tados son iguales para todos los dispositivos)
-    for i in range(0, 1):
+    for i in range(0, 2):
         print('====RUN ' + str(i) + '====')
         paraleliza_funcion(entrenamiento_resnet, len(dispositivos), params, lista_datos)
 
@@ -308,10 +308,12 @@ if __name__ == '__main__':
         entrenamientos.append(run.pop())
         precisiones.append(run.pop())
 
-    # resultados = np.transpose(np.array(resultados))
+    resultados = np.transpose(np.array(resultados))
 
     resultados_dict = {'Tiempo Entrenamiento (s)': resultados[0], 'Tiempo Evaluacion (s)': resultados[1],
                        'Precision (%)': resultados[2], 'Error (%)': resultados[3]}
+
+    print(resultados_dict)
 
     resultados = pd.DataFrame.from_dict(resultados_dict)
 
