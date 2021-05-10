@@ -40,7 +40,7 @@ def inicializa_mundo(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
 
-    dist.init_process_group("gloo", rank=rank, world_size=world_size)
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
 
 def limpieza_mundo():
@@ -96,14 +96,12 @@ def crea_tensores(parametros, datos, etiquetas, rango, tam_mundo):
     # entre los dispositivos disponibles
     if parametros.get('Modo de operacion') > 0:
         tam_entren_disp = int(tam_entren / tam_mundo)
-        # print("aqui")
         # Definicion de los tensores y dataloaders de la fase de entrenamiento
         datos_entren = torch.Tensor(datos[(tam_entren_disp * rango):(tam_entren_disp * (rango + 1))])
         etiquetas_entren = torch.Tensor(etiquetas[(tam_entren_disp * rango):(tam_entren_disp * (rango + 1))])
 
     else:
         # Definicion de los tensores y dataloaders de la fase de entrenamiento
-        # print("no aqui")
         datos_entren = torch.Tensor(datos[:tam_entren])
         etiquetas_entren = torch.Tensor(etiquetas[:tam_entren])
 
@@ -176,12 +174,18 @@ def entrenamiento_resnet(rank, world_size, parametros, datos):
 
     # ENTRENAMIENTO Y VALIDACION DE LA RED
     precisiones_epochs = []
+    t_entrenamiento_epochs = []
+    t_validacion_epochs = []
     st = tm.time()
-    for a in tqdm(range(50)):
-        # TODO: Mirar cual es la duracion de los entrenamientos y validaciones
-        # TODO: Porque se ponen los CPUS al 100% durante la validacion???
+    for a in tqdm(range(100)):
+        ste = tm.time()
         tn.train(dispositivos[rank], loader_entren, modelo_paralelo, optimizador, perdida_fn)
+        t_entrenamiento_epochs.append(tm.time()-ste)
+
+        ste = tm.time()
         precision, perdida = tn.validate_or_test(dispositivos[rank], loader_val, modelo_paralelo, optimizador, perdida_fn)
+        t_validacion_epochs.append(tm.time()-ste)
+
         precisiones_epochs.append(precision)
 
     t_entren = tm.time() - st
@@ -199,7 +203,8 @@ def entrenamiento_resnet(rank, world_size, parametros, datos):
     # terminar la ejecucion de esta funcion
     if dispositivos[rank] == 'cuda:0':
         with open('.cuda:0', 'wb') as archivo_temp:
-            pk.dump([t_entren, t_test, precision, perdida, precisiones_epochs], archivo_temp)
+            pk.dump([t_entren, t_test, precision, perdida, precisiones_epochs,
+                     t_entrenamiento_epochs, t_validacion_epochs], archivo_temp)
 
 
 def paraleliza_funcion(funcion, num_dispositivos, parametros, datos):
@@ -241,11 +246,11 @@ if __name__ == '__main__':
     """
 
     # Parametros por defecto
-    tamanho_entren = 0.7
-    tamanho_val = 0.2
+    tamanho_entren = 0.89
+    tamanho_val = 0.011
     tamanho_test = 1 - (tamanho_entren + tamanho_val)
-    tamanho_batch = 70
-    dividir_conjuntos = 0
+    tamanho_batch = 128
+    dividir_conjuntos = 1
 
     # Lectura de los parametros desde la linea de comandos
     try:
@@ -268,7 +273,7 @@ if __name__ == '__main__':
 
     # Diccionario con los parametros con los que se ha ejecutado el benchamrk
     params = {'Tam. entrenamiento': tamanho_entren, 'Tam. validacion': tamanho_val,
-              'Tam. batch': tamanho_batch,'Tam. test':tamanho_test,
+              'Tam. test': tamanho_test, 'Tam. batch': tamanho_batch,
               'Modo de operacion': dividir_conjuntos, 'Dispositivos': dispositivos}
 
     # Lectura de las muestras y etiquetas desde sus respectivos archivos
@@ -294,25 +299,39 @@ if __name__ == '__main__':
     os.remove('.cuda:0')
 
     # Guardado de la evolucion de las precisiones a lo largo de los epochs
+    validaciones = []
+    entrenamientos = []
     precisiones = []
     for run in resultados:
+        validaciones.append(run.pop())
+        entrenamientos.append(run.pop())
         precisiones.append(run.pop())
 
     resultados = np.transpose(np.array(resultados))
 
+    params['Tam. muestras'] = lista_datos[0][0][0].shape
+   
+    fecha_ejecucion = datetime.now().strftime('%Y-%m-%d,%H:%M') 
+    os.mkdir(fecha_ejecucion)
     # Guardado de los resultados en un archivo, con la fecha y hora en la que
     # se termino el benchamrk
-    with open('Resultados ' + datetime.now().strftime('%Y-%m-%d,%H:%M:%S') + '.bbr', 'wb') as f:
+    with open(fecha_ejecucion + '/Resultados.bbr', 'wb') as f:
         pk.dump([params, resultados], f)
 
     # Guardado de los parametros utilizados en un formato legible por humanos
-    with open('Parametros ' + datetime.now().strftime('%Y-%m-%d,%H:%M:%S') + '.json', 'w') as f:
+    with open(fecha_ejecucion + '/Parametros.json', 'w') as f:
         json.dump(params, f)
 
     # Guardado de los resultados de tiempo obtenidos en un formato legible por humanos
-    numpy.savetxt('Resultados ' + datetime.now().strftime('%Y-%m-%d,%H:%M:%S') + '.csv',
+    numpy.savetxt(fecha_ejecucion + '/Resultados.csv',
                   resultados, delimiter=',', fmt='%f')
 
     # Guardado de las precisiones de cada epoch de cada run en un formato legible por humanos
-    numpy.savetxt('Precisiones ' + datetime.now().strftime('%Y-%m-%d,%H:%M:%S') + '.csv',
+    numpy.savetxt(fecha_ejecucion + '/Precisiones.csv',
                   np.array(precisiones), delimiter=',', fmt='%f')
+
+    numpy.savetxt(fecha_ejecucion + '/Entrenamientos.csv',
+                  np.array(entrenamientos), delimiter=',', fmt='%f')
+
+    numpy.savetxt(datetime.now().strftime('%Y-%m-%d,%H:%M') + '/Validaciones.csv',
+                  np.array(validaciones), delimiter=',', fmt='%f')
