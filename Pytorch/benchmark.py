@@ -3,6 +3,7 @@ import sys
 from datetime import datetime
 
 import numpy
+import pandas as pd
 from tqdm import tqdm
 
 import Modelo.model as md
@@ -177,7 +178,7 @@ def entrenamiento_resnet(rank, world_size, parametros, datos):
     t_entrenamiento_epochs = []
     t_validacion_epochs = []
     st = tm.time()
-    for a in tqdm(range(100)):
+    for a in tqdm(range(1)):
         ste = tm.time()
         tn.train(dispositivos[rank], loader_entren, modelo_paralelo, optimizador, perdida_fn)
         t_entrenamiento_epochs.append(tm.time()-ste)
@@ -307,10 +308,18 @@ if __name__ == '__main__':
         entrenamientos.append(run.pop())
         precisiones.append(run.pop())
 
-    resultados = np.transpose(np.array(resultados))
+    # resultados = np.transpose(np.array(resultados))
+
+    resultados_dict = {'Tiempo Entrenamiento (s)': resultados[0], 'Tiempo Evaluacion (s)': resultados[1],
+                       'Precision (%)': resultados[2], 'Error (%)': resultados[3]}
+
+    resultados = pd.DataFrame.from_dict(resultados_dict)
 
     params['Tam. muestras'] = lista_datos[0][0][0].shape
-   
+    params['Tam. entrenamiento'] = int(params['Tam. entrenamiento'] * len(lista_datos[0]))
+    params['Tam. validacion'] = int(params['Tam. validacion'] * len(lista_datos[0]))
+    params['Tam. test'] = int(params['Tam. test'] * len(lista_datos[0]))
+
     fecha_ejecucion = datetime.now().strftime('%Y-%m-%d,%H:%M') 
     os.mkdir(fecha_ejecucion)
     # Guardado de los resultados en un archivo, con la fecha y hora en la que
@@ -322,9 +331,12 @@ if __name__ == '__main__':
     with open(fecha_ejecucion + '/Parametros.json', 'w') as f:
         json.dump(params, f)
 
+
+    #TODO: hay que poner headers en estos archivos
     # Guardado de los resultados de tiempo obtenidos en un formato legible por humanos
-    numpy.savetxt(fecha_ejecucion + '/Resultados.csv',
-                  resultados, delimiter=',', fmt='%f')
+    '''numpy.savetxt(fecha_ejecucion + '/Resultados.csv',
+                  resultados, delimiter=',', fmt='%f')'''
+    resultados.to_csv(fecha_ejecucion+'/Resultados.csv')
 
     # Guardado de las precisiones de cada epoch de cada run en un formato legible por humanos
     numpy.savetxt(fecha_ejecucion + '/Precisiones.csv',
