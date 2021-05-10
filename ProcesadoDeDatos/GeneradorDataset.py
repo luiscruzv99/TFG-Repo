@@ -24,7 +24,7 @@ def lee_datos(directorio, etiqueta):
         if archivo.endswith('.png'):  # Cogemos solo los archivos .jpg
             # Lectura de una imagen (en b/n) y transformacion en un array de
             imagen = im.open(os.path.join(directorio, archivo)).convert('L')
-            # imagen = imagen.resize((344, 256))
+            imagen = imagen.resize((197, 148))
             temp = (np.array(imagen, dtype=np.float16)/255)
             imagenes.append(np.array([temp]))
 
