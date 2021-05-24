@@ -1,4 +1,7 @@
-for i in `seq 1 10`
+for i in `seq 0 9`
 do
-  python3 benchmark.py 2> progreso
+  nvprof --system-profiling on --profile-child-processes python3 benchmark.py $i 2> perfilado$i
 done
+python3 agrupa_resultados.py
+
+mv perfilado* Resultado-*/

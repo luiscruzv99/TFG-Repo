@@ -92,19 +92,13 @@ def crea_tensores(parametros, datos, etiquetas, rango, tam_mundo):
     tam_val = int(parametros.get('Tam. validacion') * len(datos)) + tam_entren
     tam_test = int(parametros.get('Tam. test') * len(datos)) + tam_val
 
-    # Ajuste del tamanho del conjunto de entrenamiento en caso de que se
-    # seleccione el modo de operacion que dsitribuye las muestras
-    # entre los dispositivos disponibles
-    if parametros.get('Modo de operacion') > 0:
-        tam_entren_disp = int(tam_entren / tam_mundo)
-        # Definicion de los tensores y dataloaders de la fase de entrenamiento
-        datos_entren = torch.Tensor(datos[(tam_entren_disp * rango):(tam_entren_disp * (rango + 1))])
-        etiquetas_entren = torch.Tensor(etiquetas[(tam_entren_disp * rango):(tam_entren_disp * (rango + 1))])
+    # Ajuste del tamanho del conjunto de entrenamiento en funcion de los
+    # dispositivos disponibles
+    tam_entren_disp = int(tam_entren / tam_mundo)
+    # Definicion de los tensores y dataloaders de la fase de entrenamiento
+    datos_entren = torch.Tensor(datos[(tam_entren_disp * rango):(tam_entren_disp * (rango + 1))])
+    etiquetas_entren = torch.Tensor(etiquetas[(tam_entren_disp * rango):(tam_entren_disp * (rango + 1))])
 
-    else:
-        # Definicion de los tensores y dataloaders de la fase de entrenamiento
-        datos_entren = torch.Tensor(datos[:tam_entren])
-        etiquetas_entren = torch.Tensor(etiquetas[:tam_entren])
 
     dataset_entren = TensorDataset(datos_entren, etiquetas_entren)
     loader_entren = DataLoader(dataset_entren, batch_size=parametros.get('Tam. batch'),
@@ -181,7 +175,7 @@ def entrenamiento_resnet(rank, world_size, parametros, datos):
     t_validacion_epochs = []
     st = tm.time()
 
-    for _ in tqdm(range(5)):
+    for _ in range(1):
         ste = tm.time()
         tn.train(dispositivos[rank], loader_entren, modelo_paralelo,
                  optimizador, perdida_fn)
@@ -245,15 +239,11 @@ def paraleliza_funcion(funcion, num_dispositivos, parametros, datos):
 
 if __name__ == '__main__':
     """
-    Funcion principal de la script. Recibe como parametros (de la linea de
-    comandos) el tamanho  de los conjuntos de de entrenamiento, validacion,
-    tamanho de los batches del conjunto de entrenamiento y como distribuir
-    los datos entre los dispositivos (0 = todos los dispositivos ven los mismos
-    datos, 1 = cada dispositivo ve una fraccion de los datos totales).
+    Funcion principal de la script. Recibe como parametro (de la linea de
+    comandos) el nombre del fichero.
 
-    Estos parametros deben introducirse en el orden especificado anteriormente,
-    en caso de faltar alguno, se utilizaran valores por defecto para los
-    parametros no intorducidos.
+    Ejecuta una run del benchmark, y guarda los resultados obtenidos en un fichero
+    binario.
     """
 
     # Parametros por defecto
@@ -263,29 +253,20 @@ if __name__ == '__main__':
     tamanho_batch = 128
     dividir_conjuntos = 1
 
-    # Lectura de los parametros desde la linea de comandos
-    try:
-        tamanho_entren = float(sys.argv[1])
-        tamanho_val = float(sys.argv[2])
-        tamanho_test = float(sys.argv[3])
-        tamanho_batch = int(sys.argv[4])
-        dividir_conjuntos = int(sys.argv[5])
+    nombre_fich = ""
 
-        if (tamanho_entren + tamanho_val + tamanho_test) > 1:
-            raise ArithmeticError
+    # Lectura del parametro desde la linea de comandos
+    try:
+        nombre_fich = sys.argv[1]
 
     except IndexError:
-        print("No se han introducido todos los parametros esperados," +
-              " usando valores por defecto")
-
-    except ArithmeticError:
-        print("Error: los tamanhos de los conjuntos son demasiado grandes")
-        sys.exit()
+        print("No se ha introducido un nombre para el fichero de salida, saliendo")
+        sys.exit(2)
 
     # Diccionario con los parametros con los que se ha ejecutado el benchamrk
     params = {'Tam. entrenamiento': tamanho_entren, 'Tam. validacion': tamanho_val,
               'Tam. test': tamanho_test, 'Tam. batch': tamanho_batch,
-              'Modo de operacion': dividir_conjuntos, 'Dispositivos': dispositivos}
+              'Dispositivos': dispositivos}
 
     # Lectura de las muestras y etiquetas desde sus respectivos archivos
     lista_datos = carga_datos()
@@ -312,42 +293,14 @@ if __name__ == '__main__':
     entrenamientos = [resultados.pop()]
     precisiones = [resultados.pop()]
 
-    # Formateo de los resultados obtenidos, anhadiendo etiquetas para su
-    # posterior guardado en un archivo csv
-    resultados_dict = {'Tiempo Entrenamiento (s)': resultados[0], 'Tiempo Evaluacion (s)': resultados[1],
-                       'Precision (%)': resultados[2], 'Error (%)': resultados[3]}
-    print(resultados)
-    print(resultados_dict)
-    resultados = pd.DataFrame.from_dict(resultados_dict)
-
     # Formateo de la lista de parametros, para facilitar su legibilidad
     params['Tam. muestras'] = lista_datos[0][0][0].shape
     params['Tam. entrenamiento'] = int(params['Tam. entrenamiento'] * len(lista_datos[0]))
     params['Tam. validacion'] = int(params['Tam. validacion'] * len(lista_datos[0]))
     params['Tam. test'] = int(params['Tam. test'] * len(lista_datos[0]))
 
-    # Guardado de los resultados en un archivo, con la fecha y hora en la que
-    # se termino el benchamrk
-    fecha_ejecucion = datetime.now().strftime('%Y-%m-%d,%H:%M')
-    os.mkdir(fecha_ejecucion)
-    with open(fecha_ejecucion + '/Resultados.bbr', 'wb') as f:
-        pk.dump([params, resultados], f)
-
-    # Guardado de los parametros utilizados en un formato legible por humanos
-    with open(fecha_ejecucion + '/Parametros.json', 'w') as f:
-        json.dump(params, f)
-
-    # Guardado de los resultados de tiempo obtenidos en un formato legible por humanos
-    resultados.to_csv(fecha_ejecucion+'/Resultados.csv')
-
-    # Guardado de las precisiones de cada epoch de cada run en un formato legible por humanos
-    numpy.savetxt(fecha_ejecucion + '/Precisiones.csv',
-                  np.array(precisiones), delimiter=',', fmt='%f')
-
-    # Guardado de los tiempos de entrenamiento de cada epoch de cada run en un formato legible por humanos
-    numpy.savetxt(fecha_ejecucion + '/Entrenamientos.csv',
-                  np.array(entrenamientos), delimiter=',', fmt='%f')
-
-    # Guardado de los tiempos de validacion de cada epoch de cada run en un formato legible por humanos
-    numpy.savetxt(datetime.now().strftime('%Y-%m-%d,%H:%M') + '/Validaciones.csv',
-                  np.array(validaciones), delimiter=',', fmt='%f')
+    # Guardado de los resultados en un archivo temporal, con el nombreç
+    # especificao en la linea de comandos
+    with open(nombre_fich, 'wb') as f:
+        pk.dump([resultados, params, validaciones,
+                entrenamientos, precisiones], f)
