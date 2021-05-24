@@ -61,7 +61,7 @@ def carga_datos():
         datos = pk.load(archivo_datos)
     with open('Entrenamiento/labels.pkl', 'rb') as archivo_etiquetas:
         etiquetas = pk.load(archivo_etiquetas)
-    
+
     return [datos, etiquetas]
 
 
@@ -149,7 +149,9 @@ def entrenamiento_resnet(rank, world_size, parametros, datos):
     """
 
     # CONVERSION DE LOS DATOS AL FORMATO DE PYTORCH (TENSORES/DATALOADERS)
-    loader_entren, loader_val, loader_test = crea_tensores(parametros, datos[0], datos[1], rank, world_size)
+    loader_entren, loader_val, loader_test = crea_tensores(parametros,
+                                                           datos[0], datos[1],
+                                                           rank, world_size)
 
     # DEFINICION DE LA RED NEURONAL, OPTIMIZADOR Y PERDIDA
 
@@ -178,13 +180,17 @@ def entrenamiento_resnet(rank, world_size, parametros, datos):
     t_entrenamiento_epochs = []
     t_validacion_epochs = []
     st = tm.time()
-    for _ in tqdm(range(100)):
+
+    for _ in tqdm(range(5)):
         ste = tm.time()
-        tn.train(dispositivos[rank], loader_entren, modelo_paralelo, optimizador, perdida_fn)
+        tn.train(dispositivos[rank], loader_entren, modelo_paralelo,
+                 optimizador, perdida_fn)
         t_entrenamiento_epochs.append(tm.time()-ste)
 
         ste = tm.time()
-        precision, perdida = tn.validate_or_test(dispositivos[rank], loader_val, modelo_paralelo, optimizador, perdida_fn)
+        precision, perdida = tn.validate_or_test(dispositivos[rank],
+                                                 loader_val, modelo_paralelo,
+                                                 optimizador, perdida_fn)
         t_validacion_epochs.append(tm.time()-ste)
 
         precisiones_epochs.append(precision)
@@ -193,19 +199,21 @@ def entrenamiento_resnet(rank, world_size, parametros, datos):
 
     # EVALUACION DE LA RED
     st = tm.time()
-    precision, perdida = tn.validate_or_test(dispositivos[rank], loader_test, modelo_paralelo, optimizador)
+    precision, perdida = tn.validate_or_test(dispositivos[rank], loader_test,
+                                             modelo_paralelo, optimizador)
     t_test = tm.time() - st
 
     # Eliminacion del grupo de procesos, operacion paralela terminada
     limpieza_mundo()
 
-    # Manera de retornar al proceso principal los resultados de la ejecucion, mediante
-    # la escritura de un archivo temporal, que el proceso principal lee al
-    # terminar la ejecucion de esta funcion
+    # Manera de retornar al proceso principal los resultados de la ejecucion,
+    # mediante la escritura de un archivo temporal, que el proceso principal
+    # lee al terminar la ejecucion de esta funcion
     if dispositivos[rank] == 'cuda:0':
         with open('.cuda:0', 'wb') as archivo_temp:
-            pk.dump([t_entren, t_test, precision, perdida, precisiones_epochs,
-                     t_entrenamiento_epochs, t_validacion_epochs], archivo_temp)
+            pk.dump([t_entren, t_test, precision, perdida,
+                     precisiones_epochs, t_entrenamiento_epochs,
+                     t_validacion_epochs], archivo_temp)
 
 
 def paraleliza_funcion(funcion, num_dispositivos, parametros, datos):
@@ -219,10 +227,12 @@ def paraleliza_funcion(funcion, num_dispositivos, parametros, datos):
     @param funcion: Funcion a ejecutar en paralelo
 
     @type num_dispositivos: int
-    @param num_dispositivos: Numero de procesos a crear para ejecutar la funcion en paralelo
+    @param num_dispositivos: Numero de procesos a crear para ejecutar la
+                             funcion en paralelo
 
     @type parametros: dict
-    @param parametros: Diccionario que contiene los tamanhos de los diferentes conjuntos
+    @param parametros: Diccionario que contiene los tamanhos de los diferentes
+                       conjuntos
 
     @type datos: list
     @param datos: Lista con todas las muestras a ensenhar a la RN
@@ -238,9 +248,9 @@ if __name__ == '__main__':
     Funcion principal de la script. Recibe como parametros (de la linea de
     comandos) el tamanho  de los conjuntos de de entrenamiento, validacion,
     tamanho de los batches del conjunto de entrenamiento y como distribuir
-    los datos entre los dispositivos (0 = todos los dispositivos ven los mismos datos,
-    1 = cada dispositivo ve una fraccion de los datos totales).
-    
+    los datos entre los dispositivos (0 = todos los dispositivos ven los mismos
+    datos, 1 = cada dispositivo ve una fraccion de los datos totales).
+
     Estos parametros deben introducirse en el orden especificado anteriormente,
     en caso de faltar alguno, se utilizaran valores por defecto para los
     parametros no intorducidos.
@@ -262,12 +272,12 @@ if __name__ == '__main__':
         dividir_conjuntos = int(sys.argv[5])
 
         if (tamanho_entren + tamanho_val + tamanho_test) > 1:
-          raise ArithmeticError
+            raise ArithmeticError
 
     except IndexError:
         print("No se han introducido todos los parametros esperados," +
               " usando valores por defecto")
-    
+
     except ArithmeticError:
         print("Error: los tamanhos de los conjuntos son demasiado grandes")
         sys.exit()
@@ -286,13 +296,11 @@ if __name__ == '__main__':
     # Bucle del benchmark, que ejecuta el entrenamiento y evaluacion de la red
     # neuronal, distribuyendolo entre los dispositivos disponibles (GPUs) y
     # cogiendo los resultados que devuelve el dispositivo 'cuda:0' (los resul-
-    # tados son iguales para todos los dispositivos)
-    for i in range(0, 10):
-        print('====RUN ' + str(i) + '====')
-        paraleliza_funcion(entrenamiento_resnet, len(dispositivos), params, lista_datos)
+    # tados son iguales para todos los dispositivos
+    paraleliza_funcion(entrenamiento_resnet, len(dispositivos), params, lista_datos)
 
-        with open('.cuda:0', 'rb') as f:
-            resultados.append(pk.load(f))
+    with open('.cuda:0', 'rb') as f:
+        resultados = pk.load(f)
 
     # Agrupacion los resultados obtenidos de las x runs del benchmark en una
     # matriz, en la que cada fila es un tipo de resultado (t. entren,
@@ -300,19 +308,16 @@ if __name__ == '__main__':
     os.remove('.cuda:0')
 
     # Guardado de la evolucion de la red a lo largo de los epochs
-    validaciones = []
-    entrenamientos = []
-    precisiones = []
-    for run in resultados:
-        validaciones.append(run.pop())
-        entrenamientos.append(run.pop())
-        precisiones.append(run.pop())
+    validaciones = [resultados.pop()]
+    entrenamientos = [resultados.pop()]
+    precisiones = [resultados.pop()]
 
     # Formateo de los resultados obtenidos, anhadiendo etiquetas para su
     # posterior guardado en un archivo csv
-    resultados = np.transpose(np.array(resultados))
     resultados_dict = {'Tiempo Entrenamiento (s)': resultados[0], 'Tiempo Evaluacion (s)': resultados[1],
                        'Precision (%)': resultados[2], 'Error (%)': resultados[3]}
+    print(resultados)
+    print(resultados_dict)
     resultados = pd.DataFrame.from_dict(resultados_dict)
 
     # Formateo de la lista de parametros, para facilitar su legibilidad
@@ -320,7 +325,6 @@ if __name__ == '__main__':
     params['Tam. entrenamiento'] = int(params['Tam. entrenamiento'] * len(lista_datos[0]))
     params['Tam. validacion'] = int(params['Tam. validacion'] * len(lista_datos[0]))
     params['Tam. test'] = int(params['Tam. test'] * len(lista_datos[0]))
-
 
     # Guardado de los resultados en un archivo, con la fecha y hora en la que
     # se termino el benchamrk
@@ -332,7 +336,6 @@ if __name__ == '__main__':
     # Guardado de los parametros utilizados en un formato legible por humanos
     with open(fecha_ejecucion + '/Parametros.json', 'w') as f:
         json.dump(params, f)
-
 
     # Guardado de los resultados de tiempo obtenidos en un formato legible por humanos
     resultados.to_csv(fecha_ejecucion+'/Resultados.csv')
