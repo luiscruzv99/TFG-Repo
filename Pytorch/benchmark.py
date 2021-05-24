@@ -289,9 +289,9 @@ if __name__ == '__main__':
     os.remove('.cuda:0')
 
     # Guardado de la evolucion de la red a lo largo de los epochs
-    validaciones = [resultados.pop()]
-    entrenamientos = [resultados.pop()]
-    precisiones = [resultados.pop()]
+    validaciones = resultados.pop()
+    entrenamientos = resultados.pop()
+    precisiones = resultados.pop()
 
     # Formateo de la lista de parametros, para facilitar su legibilidad
     params['Tam. muestras'] = lista_datos[0][0][0].shape
