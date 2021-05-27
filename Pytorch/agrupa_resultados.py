@@ -15,14 +15,13 @@ def main():
     aglomera en archivos csv
     """
 
-    archivos = 10  # Numero de ejecuciones
+    archivos = 2  # Numero de ejecuciones
     general = []  # Resultados generales de la ejecución de los benchmarks
     parametros = {}  # Parametros de los benchmarks (no varian entre
                      # ejecuciones de la misma tanda)
     entrenamientos = []  # Tiempos de entrenamiento
     validaciones = []  # Tiempos de validacion
     precisiones = []  # Precisiones de los entrenamientos de los benchmarks
-
 
     # Para cada archivo
     for i in range(archivos):

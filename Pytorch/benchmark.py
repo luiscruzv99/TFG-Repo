@@ -247,12 +247,11 @@ if __name__ == '__main__':
     """
 
     # Parametros por defecto
-    tamanho_entren = 0.89
-    tamanho_val = 0.011
+    tamanho_entren = 0.85
+    tamanho_val = 0.05
     tamanho_test = 1 - (tamanho_entren + tamanho_val)
     tamanho_batch = 128
-    dividir_conjuntos = 1
-
+    
     nombre_fich = ""
 
     # Lectura del parametro desde la linea de comandos
@@ -299,7 +298,7 @@ if __name__ == '__main__':
     params['Tam. validacion'] = int(params['Tam. validacion'] * len(lista_datos[0]))
     params['Tam. test'] = int(params['Tam. test'] * len(lista_datos[0]))
 
-    # Guardado de los resultados en un archivo temporal, con el nombreç
+    # Guardado de los resultados en un archivo temporal, con el nombre
     # especificao en la linea de comandos
     with open(nombre_fich, 'wb') as f:
         pk.dump([resultados, params, validaciones,
