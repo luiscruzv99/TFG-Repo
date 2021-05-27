@@ -18,7 +18,7 @@ mv perfilado* $directorio/
 
 mv $directorio ~/TFG-Resultados/
 
-cd ~/TFG_Resultados/
+cd ~/TFG_Resultados
 
 git add *
 
