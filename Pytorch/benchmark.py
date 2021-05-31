@@ -175,7 +175,7 @@ def entrenamiento_resnet(rank, world_size, parametros, datos):
     t_validacion_epochs = []
     st = tm.time()
 
-    for _ in range(1):
+    for _ in range(50):
         ste = tm.time()
         tn.train(dispositivos[rank], loader_entren, modelo_paralelo,
                  optimizador, perdida_fn)
@@ -248,7 +248,7 @@ if __name__ == '__main__':
 
     # Parametros por defecto
     tamanho_entren = 0.85
-    tamanho_val = 0.05
+    tamanho_val = 0.01
     tamanho_test = 1 - (tamanho_entren + tamanho_val)
     tamanho_batch = 128
     
