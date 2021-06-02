@@ -14,8 +14,12 @@ def main():
     Funcion que coge cada uno de los resultados de los benchmarks, y los
     aglomera en archivos csv
     """
+    try:
+        archivos = sys.argv[1]
+    except IndexError:
+        print("No se ha introducido el número de archivos a procesar")
+        sys.exit(0)
 
-    archivos = 2  # Numero de ejecuciones
     general = []  # Resultados generales de la ejecución de los benchmarks
     parametros = {}  # Parametros de los benchmarks (no varian entre
                      # ejecuciones de la misma tanda)
@@ -59,16 +63,19 @@ def main():
 
     # Guardado de las precisiones de cada epoch de cada run en un formato
     # legible por humanos
+    np.transpose(precisiones)
     np.savetxt(directorio + '/Precisiones.csv',
                   np.array(precisiones), delimiter=',', fmt='%f')
 
     # Guardado de los tiempos de entrenamiento de cada epoch de cada run en
     # un formato legible por humanos
+    np.transpose(entrenamientos)
     np.savetxt(directorio + '/Entrenamientos.csv',
                   np.array(entrenamientos), delimiter=',', fmt='%f')
 
     # Guardado de los tiempos de validacion de cada epoch de cada run en
     # un formato legible por humanos
+    np.transpose(validaciones)
     np.savetxt( directorio + '/Validaciones.csv',
                   np.array(validaciones), delimiter=',', fmt='%f')
 
