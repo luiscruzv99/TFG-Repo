@@ -113,7 +113,7 @@ def entrenamiento_resnet(parametros, datos, dispositivo):
     perdida_fn = torch.nn.MSELoss(reduction='mean')
 
     # Optimizador de la red (Stochastic Gradient Deescent)
-    optimizador = torch.optim.SGD(modelo_paralelo.parameters(), lr=0.05)
+    optimizador = torch.optim.SGD(modelo.parameters(), lr=0.05)
 
     # ENTRENAMIENTO Y VALIDACION DE LA RED
     precisiones_epochs = []
@@ -136,8 +136,8 @@ def entrenamiento_resnet(parametros, datos, dispositivo):
 
     # EVALUACION DE LA RED
     st = tm.time()
-    precision, perdida = tn.validate_or_test(dispositivos[rank], loader_test,
-                                             modelo_paralelo, optimizador)
+    precision, perdida = tn.validate_or_test(dispositivo, loader_test,
+                                             modelo, optimizador)
     t_test = tm.time() - st
 
     return [t_entren, t_test, precision, perdida, precisiones_epochs, t_entrenamiento_epochs, t_validacion_epochs]
@@ -154,7 +154,7 @@ def main():
 
     # Parametros por defecto
     tamanho_entren = 0.85
-    tamanho_val = 0.01
+    tamanho_val = 0.02
     tamanho_test = 1 - (tamanho_entren + tamanho_val)
     tamanho_batch = 128
 
@@ -169,7 +169,7 @@ def main():
 
     # Diccionario con los parametros con los que se ha ejecutado el benchamrk
     params = {'Tam. entrenamiento': tamanho_entren, 'Tam. validacion': tamanho_val,
-              'Tam. test': tamanho_test, 'Tam. batch': tamanho_batch}
+              'Tam. test': tamanho_test, 'Tam. batch': tamanho_batch, 'Dispositivo': dispositivo}
 
     # Lectura de las muestras y etiquetas desde sus respectivos archivos
     lista_datos = carga_datos()

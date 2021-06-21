@@ -248,7 +248,7 @@ if __name__ == '__main__':
 
     # Parametros por defecto
     tamanho_entren = 0.85
-    tamanho_val = 0.01
+    tamanho_val = 0.02
     tamanho_test = 1 - (tamanho_entren + tamanho_val)
     tamanho_batch = 128
     

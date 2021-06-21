@@ -15,7 +15,7 @@ def main():
     aglomera en archivos csv
     """
     try:
-        archivos = sys.argv[1]
+        archivos = int(sys.argv[1])
     except IndexError:
         print("No se ha introducido el número de archivos a procesar")
         sys.exit(0)
@@ -63,19 +63,19 @@ def main():
 
     # Guardado de las precisiones de cada epoch de cada run en un formato
     # legible por humanos
-    np.transpose(precisiones)
+    precisiones = np.transpose(precisiones)
     np.savetxt(directorio + '/Precisiones.csv',
                   np.array(precisiones), delimiter=',', fmt='%f')
 
     # Guardado de los tiempos de entrenamiento de cada epoch de cada run en
     # un formato legible por humanos
-    np.transpose(entrenamientos)
+    entrenamientos = np.transpose(entrenamientos)
     np.savetxt(directorio + '/Entrenamientos.csv',
                   np.array(entrenamientos), delimiter=',', fmt='%f')
 
     # Guardado de los tiempos de validacion de cada epoch de cada run en
     # un formato legible por humanos
-    np.transpose(validaciones)
+    validaciones = np.transpose(validaciones)
     np.savetxt( directorio + '/Validaciones.csv',
                   np.array(validaciones), delimiter=',', fmt='%f')
 

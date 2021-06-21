@@ -38,7 +38,7 @@ def inicializa_mundo(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
 
-    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+    dist.init_process_group("gloo", rank=rank, world_size=world_size)
 
 
 def limpieza_mundo():
@@ -94,7 +94,7 @@ def crea_tensores(parametros, datos, etiquetas, rango, tam_mundo):
     tam_entren_cpu = int(tam_entren / (tam_mundo * 12))
     tam_entren_gpu = int((tam_entren-tam_entren_cpu) / (tam_mundo-1))
 
-    if dispositivos[rank] == 'cpu':
+    if dispositivos[rango] == 'cpu':
         parametros['Tam. batch'] = int(parametros['Tam. batch']/12)
         datos_entren = torch.Tensor(datos[(tam_entren_gpu * rango):(tam_entren_cpu + (tam_entren_gpu * rango))])
         etiquetas_entren = torch.Tensor(etiquetas[(tam_entren_gpu * rango):(tam_entren_cpu + (tam_entren_gpu * rango))])
@@ -180,8 +180,9 @@ def entrenamiento_resnet(rank, world_size, parametros, datos):
 
     for _ in range(100):
         ste = tm.time()
-        tn.train(dispositivos[rank], loader_entren, modelo_paralelo,
-                 optimizador, perdida_fn)
+        with modelo_paralelo.join():
+            tn.train(dispositivos[rank], loader_entren, modelo_paralelo,
+                    optimizador, perdida_fn)
         t_entrenamiento_epochs.append(tm.time() - ste)
 
         ste = tm.time()
@@ -251,7 +252,7 @@ if __name__ == '__main__':
 
     # Parametros por defecto
     tamanho_entren = 0.85
-    tamanho_val = 0.01
+    tamanho_val = 0.02
     tamanho_test = 1 - (tamanho_entren + tamanho_val)
     tamanho_batch = 128
 
