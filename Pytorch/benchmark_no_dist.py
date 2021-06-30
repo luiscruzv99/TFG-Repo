@@ -6,8 +6,8 @@ import numpy
 import pandas as pd
 from tqdm import tqdm
 
-import Modelo.model as md
-import Modelo.training as tn
+import Modelo.ResNet as md
+import Modelo.entrenamiento as tn
 
 import pickle as pk
 import numpy as np
@@ -25,9 +25,9 @@ def carga_datos():
     Funcion que carga en listas los datos de los archivos binarios
     """
 
-    with open('Entrenamiento/data.pkl', 'rb') as archivo_datos:
+    with open('Datos/data.pkl', 'rb') as archivo_datos:
         datos = pk.load(archivo_datos)
-    with open('Entrenamiento/labels.pkl', 'rb') as archivo_etiquetas:
+    with open('Datos/labels.pkl', 'rb') as archivo_etiquetas:
         etiquetas = pk.load(archivo_etiquetas)
 
     return [datos, etiquetas]
@@ -123,11 +123,10 @@ def entrenamiento_resnet(parametros, datos, dispositivo):
 
     for _ in range(100):
         ste = tm.time()
-        tn.train(dispositivo, loader_entren, modelo, optimizador, perdida_fn)
+        tn.entrena(dispositivo, loader_entren, modelo, optimizador, perdida_fn)
         t_entrenamiento_epochs.append(tm.time()-ste)
-
         ste = tm.time()
-        precision, perdida = tn.validate_or_test(dispositivo, loader_val, modelo, optimizador, perdida_fn)
+        precision, perdida = tn.valida_o_evalua(dispositivo, loader_val, modelo, optimizador, perdida_fn)
         t_validacion_epochs.append(tm.time()-ste)
 
         precisiones_epochs.append(precision)
@@ -136,7 +135,7 @@ def entrenamiento_resnet(parametros, datos, dispositivo):
 
     # EVALUACION DE LA RED
     st = tm.time()
-    precision, perdida = tn.validate_or_test(dispositivo, loader_test,
+    precision, perdida = tn.valida_o_evalua(dispositivo, loader_test,
                                              modelo, optimizador)
     t_test = tm.time() - st
 

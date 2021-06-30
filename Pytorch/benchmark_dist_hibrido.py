@@ -2,8 +2,8 @@ import os
 import sys
 from datetime import datetime
 
-import Modelo.model as md
-import Modelo.training as tn
+import Modelo.ResNet as md
+import Modelo.entrenamiento as tn
 
 import pickle as pk
 import numpy as np
@@ -54,9 +54,9 @@ def carga_datos():
     Funcion que carga en listas los datos de los archivos binarios
     """
 
-    with open('Entrenamiento/data.pkl', 'rb') as archivo_datos:
+    with open('Datos/data.pkl', 'rb') as archivo_datos:
         datos = pk.load(archivo_datos)
-    with open('Entrenamiento/labels.pkl', 'rb') as archivo_etiquetas:
+    with open('Datos/labels.pkl', 'rb') as archivo_etiquetas:
         etiquetas = pk.load(archivo_etiquetas)
 
     return [datos, etiquetas]
@@ -181,12 +181,12 @@ def entrenamiento_resnet(rank, world_size, parametros, datos):
     for _ in range(100):
         ste = tm.time()
         with modelo_paralelo.join():
-            tn.train(dispositivos[rank], loader_entren, modelo_paralelo,
+            tn.entrena(dispositivos[rank], loader_entren, modelo_paralelo,
                     optimizador, perdida_fn)
         t_entrenamiento_epochs.append(tm.time() - ste)
 
         ste = tm.time()
-        precision, perdida = tn.validate_or_test(dispositivos[rank],
+        precision, perdida = tn.valida_o_evalua(dispositivos[rank],
                                                  loader_val, modelo_paralelo,
                                                  optimizador, perdida_fn)
         t_validacion_epochs.append(tm.time() - ste)
@@ -197,7 +197,7 @@ def entrenamiento_resnet(rank, world_size, parametros, datos):
 
     # EVALUACION DE LA RED
     st = tm.time()
-    precision, perdida = tn.validate_or_test(dispositivos[rank], loader_test,
+    precision, perdida = tn.valida_o_evalua(dispositivos[rank], loader_test,
                                              modelo_paralelo, optimizador)
     t_test = tm.time() - st
 
@@ -307,4 +307,3 @@ if __name__ == '__main__':
     with open(nombre_fich, 'wb') as f:
         pk.dump([resultados, params, validaciones,
                  entrenamientos, precisiones], f)
-
