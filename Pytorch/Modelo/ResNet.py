@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from functools import partial
 
 '''
-Clase correspondiente a una capa de convolucion de Pytorch, que calcula automaticamente en padding en funcion de 
+Clase correspondiente a una capa de convolucion de Pytorch, que calcula automaticamente en padding en funcion de
 los tamaños del kernel que recibe
 '''
 class Conv2dAuto(nn.Conv2d):
@@ -27,7 +27,7 @@ def activation_funct(activation):
 
 
 '''
-Superclase que define un bloque residual (una micro capa del modelo de ResNet), con sus canales de entrada, 
+Superclase que define un bloque residual (una capa del modelo de ResNet), con sus canales de entrada,
 de salida y su funcion de activacion
 '''
 class ResidualBlock(nn.Module):
@@ -48,23 +48,24 @@ class ResidualBlock(nn.Module):
         return x
 
     '''
-    Funcion que determina si se debe saltar la propagacion hacia adelante en este bloque 
+    Funcion que determina si se debe saltar la propagacion hacia adelante en este bloque
     '''
     @property
     def should_apply_shortcut(self):
         return self.in_channels != self.out_channels
 
-# =============================
-# === TODO: Documentar esto ===
-# =============================
 
+'''
+Superclase que define un bloque residual de ResNet con capacidad para expandir su salida
+(upsampling)
+'''
 class ResNetResidualBlock(ResidualBlock):
     def __init__(self, in_channels, out_channels, expansion=1, downsampling=1, conv=conv3x3, *args, **kwargs):
         super().__init__(in_channels, out_channels, *args, **kwargs)
         self.expansion, self.downsampling, self.conv = expansion, downsampling, conv
         self.shortcut = nn.Sequential(
                 nn.Conv2d(self.in_channels, self.expanded_channels, kernel_size=1, stride=self.downsampling, bias=False),
-                nn.BatchNorm2d(self.expanded_channels)) if self.should_apply_shortcut else None 
+                nn.BatchNorm2d(self.expanded_channels)) if self.should_apply_shortcut else None
 
     @property
     def expanded_channels(self):
@@ -77,7 +78,11 @@ class ResNetResidualBlock(ResidualBlock):
 def conv_bn(in_channels, out_channels, conv, *args, **kwargs):
     return nn.Sequential(conv(in_channels, out_channels, *args, **kwargs), nn.BatchNorm2d(out_channels))
 
-
+'''
+Una capa del modelo de ResNet, sin expansion. Para modelos con más de 34 capas, se
+usan en conjunto con estas unas especiales llamadas capas BottleNeck, que expanden
+la salida 4 veces. No implementada en este modelo.
+'''
 class ResNetBasicBlock(ResNetResidualBlock):
 
     expansion = 1
@@ -89,18 +94,9 @@ class ResNetBasicBlock(ResNetResidualBlock):
                 conv_bn(self.out_channels, self.expanded_channels, conv=self.conv, bias=False)
                 )
 
-class ResNetBottleNeckBlock(ResNetResidualBlock):
-    expansion=4
-    def __init__(self, in_channels,out_channels, *args, **kwargs):
-        super().__init__(in_channels, out_channels, expansion=4, *args, **kwargs)
-        self.blocks = nn.Sequential(
-                conv_bn(self.in_channels, self.out_channels, self.conv, kernel_size=3, stride=self.downsampling),
-                activation_funct(self.activation),
-                conv_bn(self.out_channels, self.out_channels, self.conv, kernel_size=3, stride=self.downsampling),
-                activation_funct(self.activation),
-                conv_bn(self.out_channels, self.expanded_channels, self.conv, kernel_size=1),
-                )
-
+'''
+Clase que agrupa capas de ResNet en bloques
+'''
 class ResNetLayer(nn.Module):
     def __init__(self, in_channels, out_channels, block=ResNetBasicBlock, n=1, *args, **kwargs):
         super().__init__()
@@ -115,6 +111,9 @@ class ResNetLayer(nn.Module):
         x=self.blocks(x)
         return x
 
+'''
+Parte del modelo ResNet que recibe la imagen de entrada y la procesa
+'''
 class ResNetEncoder(nn.Module):
     def __init__(self, in_channels=3, block_sizes=[64,128,256,512], depths=[2,2,2,2],
             activation='relu', block=ResNetBasicBlock, *args, **kwargs):
@@ -142,6 +141,10 @@ class ResNetEncoder(nn.Module):
             x = block(x)
         return x
 
+'''
+Parte del modelo ResNet que recibe la salida del encoder y determina la clase a la que
+pertenece la imagen recibida
+'''
 class ResNetDecoder(nn.Module):
     def __init__(self, in_features, n_classes):
         super().__init__()
@@ -155,7 +158,10 @@ class ResNetDecoder(nn.Module):
         return x
 
 
-
+'''
+Clase que define un modelo ResNet completo, del numero de capas que se le especifiquen,
+en este caso de 34 capas.
+'''
 class ResNet(nn.Module):
 
     def __init__(self, in_channels, n_classes, *args, **kwargs):
@@ -170,5 +176,8 @@ class ResNet(nn.Module):
 
         return x
 
+'''
+Funcion que crea una instancia del modelo ResNet de 34 capas y la devuelve
+'''
 def resNet34(in_channels, n_classes, block=ResNetBasicBlock, *args, **kwargs):
     return ResNet(in_channels, n_classes, block=block, depths=[3,4,6,3], *args, **kwargs)
