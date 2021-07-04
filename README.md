@@ -4,11 +4,20 @@
 
 ## Descripción
 
-Este repositorio contiene el Trabajo Fin de Grado de Luis Cruz Varona, en el que se examina la diferencia de rendimiento de implementaciones de redes neuronales en Pytorch en ambientes Mono-GPU y Multi-GPU. Para ello se encuentran hechos 3 benchmarks y 4 experimentos, que se sirven de un modelo ResNet34 y de los estándares definidos por [MLCommons](https://mlcommons.org/en/) en sus benchmarks de [Training](https://mlcommons.org/en/training-normal-07/).
+Este repositorio contiene el código del Trabajo Fin de Grado de Luis Cruz Varona, en el que se examina la diferencia de rendimiento de implementaciones de redes neuronales en Pytorch en ambientes Mono-GPU y Multi-GPU. Para ello se encuentran hechos 3 benchmarks y 4 experimentos, que se sirven de un modelo ResNet34 y de los estándares definidos por [MLCommons](https://mlcommons.org/en/) en sus benchmarks de [Training](https://mlcommons.org/en/training-normal-07/). Los resultados de los experimentos realizados como parte del trabajo se encuentran alojados en el repositorio: https://github.com/luiscruzv99/TFG-Resultados.
 
 ### · Estructura del repositorio
 
-El repositorio contiene 3 grandes carpetas:
+La estructura del repositorio es la siguiente:
+
+```powershell
+├───ProcesadoDeDatos
+└───Pytorch
+    ├───Datos
+    └───Modelo
+```
+
+El repositorio contiene 2 grandes carpetas:
 
 - __ProcesadoDeDatos__: Carpeta que contiene el script que preprocesa el dataset utilizado por los benchmarks, para ahorrar tiempo de ejecución.
 - __Pytorch__: Carpeta que contiene las implementaciones del modelo, bucles de entrenamiento, validación y test, y benchmarks utilizando diferentes tipos de dispositivos
@@ -35,8 +44,6 @@ sudo apt install python3 python3-pip
 pip3 install torch torchvision torchaudio
 ```
 - El programa de perfilado __sauna__ para poder realizar las medidas de energía.
-
-
 
 
 
